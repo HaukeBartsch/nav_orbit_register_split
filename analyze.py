@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import sys
+import os
 import argparse
 import json
 import SimpleITK as sitk
 import numpy as np
 
-def create_mask_with_intensity_constraint2(image, min_intensity=600):
+def create_mask_with_intensity_constraint(image, min_intensity=600):
     stats = sitk.StatisticsImageFilter()
     stats.Execute(image)
     max_value = int(stats.GetMaximum())
@@ -25,22 +26,6 @@ def dilateIt(image, filter_size=3):
     filter.SetBackgroundValue(0)
 
     return filter.Execute(image)
-
-def create_mask_with_intensity_constraint(image, min_intensity=600):
-    # Create the BinaryThresholdImageFilter
-    threshold_filter = sitk.BinaryThresholdImageFilter()
-        
-    # Set the threshold values
-    threshold_filter.SetLowerThreshold(min_intensity)
-    max_value = sitk.GetArrayFromImage(image).max()
-    threshold_filter.SetUpperThreshold(int(max_value))
-        
-    # Set the values for pixels inside and outside the threshold range
-    threshold_filter.SetInsideValue(1)
-    threshold_filter.SetOutsideValue(0)
-        
-    # Execute the filter to get the mask image
-    return threshold_filter.Execute(image)
 
 
 def main():
@@ -65,10 +50,54 @@ def main():
     mask2_name = args.inputMask2
     output = args.output
 
-    ct1 = sitk.ReadImage(ct1_name)
-    ct2 = sitk.ReadImage(ct2_name)
-    mask1 = sitk.ReadImage(mask1_name)
-    mask2 = sitk.ReadImage(mask2_name)
+    # if the input is a folder we should assume we read DICOM data (all files in all directories)
+    ct1 = None
+    if os.path.isdir(ct1_name):
+        # read as dicom
+        reader = sitk.ImageSeriesReader(recursive=True)
+        dicom_names = reader.GetGDCMSeriesFileNames(ct1_name)
+
+        # Read the series
+        reader.SetFileNames(dicom_names)
+        ct1 = reader.Execute()
+    else:
+        ct1 = sitk.ReadImage(ct1_name)
+
+    ct2 = None
+    if os.path.isdir(ct2_name):
+        # read as dicom
+        reader = sitk.ImageSeriesReader(recursive=True)
+        dicom_names = reader.GetGDCMSeriesFileNames(ct2_name)
+
+        # Read the series
+        reader.SetFileNames(dicom_names)
+        ct2 = reader.Execute()
+    else:
+        ct2 = sitk.ReadImage(ct2_name)
+
+    mask1 = None
+    if os.path.isdir(mask1_name):
+        # read as dicom
+        reader = sitk.ImageSeriesReader(recursive=True)
+        dicom_names = reader.GetGDCMSeriesFileNames(mask1_name)
+
+        # Read the series
+        reader.SetFileNames(dicom_names)
+        mask1 = reader.Execute()
+    else:
+        mask1 = sitk.ReadImage(mask1_name)
+
+    mask2 = None
+    if os.path.isdir(mask2_name):
+        # read as dicom
+        reader = sitk.ImageSeriesReader(recursive=True)
+        dicom_names = reader.GetGDCMSeriesFileNames(mask2_name)
+
+        # Read the series
+        reader.SetFileNames(dicom_names)
+        mask2 = reader.Execute()
+    else:
+        mask2 = sitk.ReadImage(mask2_name)
 
     elastixImageFilter = sitk.ElastixImageFilter()
     # parameterMap = sitk.GetDefaultParameterMap('translate')
@@ -88,7 +117,7 @@ def main():
 
     elastixImageFilter.SetFixedImage(ct1)
     # we can only use the mask if we dilate it as well, what about smoothing?
-    bone_mask = create_mask_with_intensity_constraint2(ct1, 200)
+    bone_mask = create_mask_with_intensity_constraint(ct1, 200)
     elastixImageFilter.SetMovingImage(ct2)
     elastixImageFilter.SetFixedMask(dilateIt(bone_mask, 7))
     elastixImageFilter.Execute()
@@ -215,7 +244,7 @@ def main():
         volumes_per_region["fixed"][nam] = volume_mm3 / 1000
         print(f"{nam}: Volume = {volumes_per_region["fixed"][nam]:.2f} cm³")
 
-    sitk.WriteImage(split_mask, output + "/split_mask_moved_resampled.nii.gz")
+    sitk.WriteImage(split_mask, output + "/split_mask_fixed_resampled.nii.gz")
 
     # Apply the same splits with the mask1 and save that also
     mask_array = sitk.GetArrayFromImage(mask1)
@@ -263,10 +292,10 @@ def main():
         volumes_per_region["moved"][nam] = volume_mm3 / 1000
         print(f"{nam}: Volume = {volumes_per_region["moved"][nam]:.2f} cm³")
 
-    sitk.WriteImage(split_mask, output + "/split_mask_fixed.nii.gz")
+    sitk.WriteImage(split_mask, output + "/split_mask_moved_resampled.nii.gz")
 
     # save the volume info
-    with open(output + "/nav_orbit_volumes.json", "w") as file:
+    with open(output + "/volumes.json", "w") as file:
         json.dump(volumes_per_region, file, indent=2)
 
 

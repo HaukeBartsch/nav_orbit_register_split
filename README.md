@@ -5,15 +5,17 @@ Load a set of 2 CT images with their corresponding masks. Split the masks after 
 Using pandas, SimpleITK and SimpleITK-SimpleElastix.
 
 ```bash
+conda activate nav_orbit_register_split
 ./analyze.py \
   -i1 data/NAV_ORBIT/images/1.3.6.1.4.1.45037.004171102544140049240402150654051107991535320.nii.gz \
   -i2 data/NAV_ORBIT/images/1.3.6.1.4.1.45037.417744054018056302213130162265012103225857091.nii.gz \
   -m1 data/NAV_ORBIT/labels/1.3.6.1.4.1.45037.004171102544140049240402150654051107991535320.nii.gz \
   -m2 data/NAV_ORBIT/labels/1.3.6.1.4.1.45037.417744054018056302213130162265012103225857091.nii.gz \
   --output /tmp/
+cat /tmp/volumes.json
 ```
 
-As output the following information is generated (/tmp/nav_orbit_volumes.json).
+As output the following information is generated (/tmp/volumes.json).
 
 ```json
 {
