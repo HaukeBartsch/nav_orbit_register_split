@@ -11,6 +11,8 @@ def create_mask_with_intensity_constraint(image, min_intensity=600):
     stats.Execute(image)
     max_value = int(stats.GetMaximum())
     # could we just use an upperThreshold of None? to speed it up?
+    if min_intensity > max_value:
+        raise ValueError(f"min_intensity ({min_intensity}) is greater than the maximum intensity in the image ({max_value}).")
 
     return sitk.BinaryThreshold(image, 
                                 lowerThreshold=min_intensity,
@@ -50,13 +52,16 @@ def main():
     mask2_name = args.inputMask2
     output = args.output
 
+    if not os.path.exists(output):
+        os.makedirs(output)
+
     # if the input is a folder we should assume we read DICOM data (all files in all directories)
     ct1 = None
     if os.path.isdir(ct1_name):
         # read as dicom
-        reader = sitk.ImageSeriesReader(recursive=True)
-        dicom_names = reader.GetGDCMSeriesFileNames(ct1_name)
-
+        reader = sitk.ImageSeriesReader()
+        dicom_names = reader.GetGDCMSeriesFileNames(ct1_name, recursive=True)
+        # print(dicom_names)
         # Read the series
         reader.SetFileNames(dicom_names)
         ct1 = reader.Execute()
@@ -66,8 +71,8 @@ def main():
     ct2 = None
     if os.path.isdir(ct2_name):
         # read as dicom
-        reader = sitk.ImageSeriesReader(recursive=True)
-        dicom_names = reader.GetGDCMSeriesFileNames(ct2_name)
+        reader = sitk.ImageSeriesReader()
+        dicom_names = reader.GetGDCMSeriesFileNames(ct2_name, recursive=True)
 
         # Read the series
         reader.SetFileNames(dicom_names)
@@ -78,8 +83,8 @@ def main():
     mask1 = None
     if os.path.isdir(mask1_name):
         # read as dicom
-        reader = sitk.ImageSeriesReader(recursive=True)
-        dicom_names = reader.GetGDCMSeriesFileNames(mask1_name)
+        reader = sitk.ImageSeriesReader()
+        dicom_names = reader.GetGDCMSeriesFileNames(mask1_name, recursive=True)
 
         # Read the series
         reader.SetFileNames(dicom_names)
@@ -90,8 +95,8 @@ def main():
     mask2 = None
     if os.path.isdir(mask2_name):
         # read as dicom
-        reader = sitk.ImageSeriesReader(recursive=True)
-        dicom_names = reader.GetGDCMSeriesFileNames(mask2_name)
+        reader = sitk.ImageSeriesReader()
+        dicom_names = reader.GetGDCMSeriesFileNames(mask2_name, recursive=True)
 
         # Read the series
         reader.SetFileNames(dicom_names)
@@ -101,12 +106,16 @@ def main():
 
     elastixImageFilter = sitk.ElastixImageFilter()
     # parameterMap = sitk.GetDefaultParameterMap('translate')
+    # parameterMap = sitk.GetDefaultParameterMap('affine')
     parameterMap = sitk.GetDefaultParameterMap('affine')
     parameterMap["DefaultPixelValue"] = ("-1024",)
     parameterMap["NumberOfSpatialSamples"] = ("1000",)
     parameterMap["MaximumNumberOfIterations"] = ("10000",)
     parameterMap["ErodeFixedMask"] = ("false",)
     parameterMap["MaximumNumberOfSamplingAttempts"] = ("8",)
+    parameterMap["AutomaticTransformInitialization"] = ("true",)
+    parameterMap["AutomaticTransformInitializationMethod"] = ("CenterOfGravity",)
+    #parameterMap["InitialTransformParametersFileName"] = (initial_transform_file,)
     #parameterMap["NumberOfHistogramBins"] = ("256",)
 
     parameterMapVector = [
@@ -124,6 +133,7 @@ def main():
     resultImage = elastixImageFilter.GetResultImage()
     transformParameterMap = elastixImageFilter.GetTransformParameterMap(0)
     sitk.WriteImage(resultImage, output + "/ct_moved_resampled.nii.gz")
+    sitk.WriteImage(ct1, output + "/ct_fixed.nii.gz")
 
     transformixImageFilter = sitk.TransformixImageFilter()
     transformParameterMap["ResampleInterpolator"] = ("FinalNearestNeighborInterpolator",)
