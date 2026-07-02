@@ -11,7 +11,7 @@ conda activate nav_orbit_register_split
   -i2 data/NAV_ORBIT/images/1.3.6.1.4.1.45037.417744054018056302213130162265012103225857091.nii.gz \
   -m1 data/NAV_ORBIT/labels/1.3.6.1.4.1.45037.004171102544140049240402150654051107991535320.nii.gz \
   -m2 data/NAV_ORBIT/labels/1.3.6.1.4.1.45037.417744054018056302213130162265012103225857091.nii.gz \
-  --output /tmp/
+  --output /tmp/NAV_ORBIT_test/
 cat /tmp/volumes.json
 ```
 
@@ -58,7 +58,7 @@ As output the following information is generated (/tmp/volumes.json).
 |split_mask_fixed_resampled.nii.gz	| Pre-op mask split into 4 regions |
 |split_mask_moved_resampled.nii.gz	| Post-op mask split into 4 regions |
 |volumes.json	| Volume per region, per image with QC measures |
-|&lt;output folder&gt;.csv | Volume per region, per image with QC measures (csv format) |
+|&lt;NAV_ORBIT_test&gt;.csv | Volume per region, per image with QC measures (csv format) |
 
 ## How to verify visually / numerically
 
