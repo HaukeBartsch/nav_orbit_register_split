@@ -104,7 +104,13 @@ def main():
     else:
         mask2 = sitk.ReadImage(mask2_name)
 
+
+
     elastixImageFilter = sitk.ElastixImageFilter()
+    output_dir = "/tmp/registration_output"
+    os.makedirs(output_dir, exist_ok=True)
+    elastixImageFilter.SetOutputDirectory(output_dir)
+    elastixImageFilter.LogToFileOn()
     # parameterMap = sitk.GetDefaultParameterMap('translate')
     # parameterMap = sitk.GetDefaultParameterMap('affine')
     parameterMap = sitk.GetDefaultParameterMap('affine')
@@ -115,6 +121,7 @@ def main():
     parameterMap["MaximumNumberOfSamplingAttempts"] = ("8",)
     parameterMap["AutomaticTransformInitialization"] = ("true",)
     parameterMap["AutomaticTransformInitializationMethod"] = ("CenterOfGravity",)
+    #parameterMap["ShowExactMetricValue"] = ["true"] 
     #parameterMap["InitialTransformParametersFileName"] = (initial_transform_file,)
     #parameterMap["NumberOfHistogramBins"] = ("256",)
 
@@ -130,6 +137,20 @@ def main():
     elastixImageFilter.SetMovingImage(ct2)
     elastixImageFilter.SetFixedMask(dilateIt(bone_mask, 7))
     elastixImageFilter.Execute()
+
+    # Get the mutual information metric value from the log file
+    final_metric = None
+    log_path = os.path.join(output_dir, "elastix.log")
+    if os.path.exists(log_path):
+        with open(log_path, 'r') as f:
+            for line in f:
+                # Elastix records: "Final metric value = -0.592680"
+                if "Final metric value" in line:
+                    final_metric = float(line.split("=")[-1].strip())
+                    break
+
+    #print("Final Metric Value:", final_metric)
+
     resultImage = elastixImageFilter.GetResultImage()
     transformParameterMap = elastixImageFilter.GetTransformParameterMap(0)
     sitk.WriteImage(resultImage, output + "/ct_moved_resampled.nii.gz")
@@ -144,6 +165,17 @@ def main():
     transformixImageFilter.Execute()
     sitk.WriteImage(transformixImageFilter.GetResultImage(), output + "/mask_moved_resampled.nii.gz")
     mask2_registered = transformixImageFilter.GetResultImage()
+
+    # Compute a dice coefficient between the two masks for quality control
+    mask1_array = sitk.GetArrayFromImage(mask1)
+    mask2_registered_array = sitk.GetArrayFromImage(mask2_registered)
+
+    # Compute Dice between fixed mask and registered moving mask
+    fixed_binary = (mask1_array > 0).astype(float)
+    moved_binary = (mask2_registered_array > 0).astype(float)
+    intersection = np.sum(fixed_binary * moved_binary)
+    full_masks_dice = 2.0 * intersection / (np.sum(fixed_binary) + np.sum(moved_binary))
+    # print(f"Mask Dice coefficient: {full_masks_dice:.4f}")
 
     # we should split the transformed masks now, both on the mask1 and on mask2
     # get center of mass for the mask
@@ -227,6 +259,9 @@ def main():
     split_mask = sitk.GetImageFromArray(mask_array)
     split_mask.CopyInformation(mask2_registered)
     volumes_per_region = {
+        "final_mutual_information": -final_metric,
+        "full_masks_dice": full_masks_dice,
+        "volume_change_ratio": {},
         "moved": {},
         "fixed": {}
     }
@@ -303,6 +338,15 @@ def main():
         print(f"{nam}: Volume = {volumes_per_region["moved"][nam]:.2f} cm³")
 
     sitk.WriteImage(split_mask, output + "/split_mask_moved_resampled.nii.gz")
+
+    # add volume change ratios
+    for region in names_dict[1:]:  # skip "background"
+        fv = volumes_per_region["fixed"][region]
+        mv = volumes_per_region["moved"][region]
+        if fv > 0:
+            volumes_per_region["volume_change_ratio"][region] = round(mv / fv, 4)
+        else:
+            volumes_per_region["volume_change_ratio"][region] = None
 
     # save the volume info
     with open(output + "/volumes.json", "w") as file:
