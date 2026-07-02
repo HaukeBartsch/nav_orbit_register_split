@@ -58,7 +58,7 @@ As output the following information is generated (/tmp/volumes.json).
 |split_mask_fixed_resampled.nii.gz	| Pre-op mask split into 4 regions |
 |split_mask_moved_resampled.nii.gz	| Post-op mask split into 4 regions |
 |volumes.json	| Volume per region, per image with QC measures |
-|<output folder>.csv | Volume per region, per image with QC measures (csv format) |
+|&lt;output folder&gt;.csv | Volume per region, per image with QC measures (csv format) |
 
 ## How to verify visually / numerically
 
