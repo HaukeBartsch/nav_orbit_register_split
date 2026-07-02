@@ -57,11 +57,12 @@ As output the following information is generated (/tmp/volumes.json).
 |mask_moved_resampled.nii.gz	| Post-op mask registered to pre-op space |
 |split_mask_fixed_resampled.nii.gz	| Pre-op mask split into 4 regions |
 |split_mask_moved_resampled.nii.gz	| Post-op mask split into 4 regions |
-|volumes.json	| Volume per region, per image |
+|volumes.json	| Volume per region, per image with QC measures |
+|<output folder>.csv | Volume per region, per image with QC measures (csv format) |
 
 ## How to verify visually / numerically
 
-- A larger mutual information value indicates a better fit. A value close to 0 would mean that both images are completely misaligned.
+- A larger mutual information value indicates a better fit. A value close to 0 would mean that both images are still misaligned.
 - The dice coefficient between the aligned masks (before splitting) should be closer to 1 for a good fit. A value of 1 indicates that both mask fit perfectly, which should not happen as both images are pre/post surgery. A value of 0 mean there is no overlap between the orbit masks after registration.
 - The volume change ratios should be closer to 0 for the sides without surgery.
 - Check that all four regions have non-zero volumes in both `fixed` and `moved` (unless the surgery intentionally removed tissue).

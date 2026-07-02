@@ -352,6 +352,18 @@ def main():
     with open(output + "/volumes.json", "w") as file:
         json.dump(volumes_per_region, file, indent=2)
 
+    # create a csv version of the same file
+    import pandas as pd
+    data = volumes_per_region
+
+    # Flatten the nested JSON structure
+    df = pd.json_normalize(data, sep='_')
+
+    # Clean up column names by removing spaces and slashes
+    df.columns = df.columns.str.replace(' / ', '_').str.replace(' ', '_')
+
+    df.to_csv(output + ("/%s.csv" % (output.split('/')[-1])), index=False)
+
 
 if __name__ == "__main__":
     main()
