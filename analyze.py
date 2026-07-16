@@ -36,6 +36,18 @@ def dilateIt(image, filter_size=3):
 
     return filter.Execute(image)
 
+def erodeIt(image, filter_size=3):
+    filter = sitk.BinaryErodeImageFilter()
+    filter.SetKernelRadius([filter_size,filter_size,filter_size])
+    filter.SetForegroundValue(1)
+    filter.SetBackgroundValue(0)
+
+    return filter.Execute(image)
+
+def smooth3d(image, filter_size=3):
+    filter = sitk.SmoothingRecursiveGaussianImageFilter()
+    filter.SetSigma(filter_size)
+    return filter.Execute(image)
 
 def elastix_3d_rigid_to_matrix(params):
     if len(params) != 6:
@@ -87,6 +99,14 @@ def main():
     mask1_name = args.inputMask1
     mask2_name = args.inputMask2
     output = args.output
+    ct1_SeriesInstanceUID = ""
+    ct2_SeriesInstanceUID = ""
+    ct1_SeriesDescription = ""
+    ct2_SeriesDescription = ""
+    ct1_Event = ""
+    ct2_Event = ""
+    ct1_StudyDate = ""
+    ct2_StudyDate = ""
 
     fixed_image_name = None
     moving_image_name = None
@@ -105,7 +125,14 @@ def main():
         # Read the series
         reader.SetFileNames(dicom_names)
         ct1 = reader.Execute()
-        fixed_image_name = reader.GetMetaData(0,"0010|0020") 
+        fixed_image_name = reader.GetMetaData(0,"0010|0020")
+        ct1_SeriesInstanceUID = reader.GetMetaData(0,"0020|000e")
+        ct1_SeriesDescription = reader.GetMetaData(0, "0008|103e")
+        ct1_StudyDate = reader.GetMetaData(0, "0008|0020")
+        try:
+            ct1_Event = reader.GetMetaData(0, "0008|0090")
+        except:
+            pass
     else:
         ct1 = sitk.ReadImage(ct1_name)
 
@@ -120,6 +147,13 @@ def main():
         reader.SetFileNames(dicom_names)
         ct2 = reader.Execute()
         moving_image_name = reader.GetMetaData(0,"0010|0020")
+        ct2_SeriesInstanceUID = reader.GetMetaData(0,"0020|000e")
+        ct2_SeriesDescription = reader.GetMetaData(0, "0008|103e")
+        ct2_StudyDate = reader.GetMetaData(0, "0008|0020")
+        try:
+            ct2_Event = reader.GetMetaData(0, "0008|0090")
+        except:
+            pass
     else:
         ct2 = sitk.ReadImage(ct2_name)
 
@@ -303,7 +337,8 @@ def main():
     # Operators might angle the CT scans so that teeth are not part of the scan. If the
     # operator does this only in one of the scans we end up with miss-alignment if we 
     # do not remove the streaks using our mask. Its sufficient to do this on the fixed image.
-    bone_mask = create_mask_with_intensity_constraint(ct1, 200, 600)
+    bone_mask = create_mask_with_intensity_constraint(smooth3d(ct1, 0.5), 200, 1000)
+    sitk.WriteImage(bone_mask, output + "/bone_mask_250_600_fixed.nii.gz")
     #all_mask = create_mask_with_intensity_constraint(ct1, 200)
     sitk.WriteImage(dilateIt(bone_mask, 4), output + "/bone_mask_200_fixed.nii.gz")
     elastixImageFilter.SetFixedMask(dilateIt(bone_mask, 4))
@@ -350,9 +385,10 @@ def main():
     if len(parameters) == 12:
         A = np.array(parameters[:9]).reshape(3, 3)
     elif len(parameters) == 6:
+        # here for a rigid transformation no scaling is applied
         A =  np.eye(3) # transformParameterMap.GetMatrix()
 
-    affine_scale = { "x": 0, "y": 0, "z": 0 }
+    affine_scale = { "x": 1, "y": 1, "z": 1 }
     if transformParameterMap["Transform"][0] == "AffineTransform":        
         # The physical scale per axis is the L2 norm of each column/row (depending on ITK convention)
         affine_scale = {
@@ -360,11 +396,6 @@ def main():
             "y": round(float(A[1][1]), 4),
             "z": round(float(A[2][2]), 4),
         }
-    #affine_scale = {
-    #    "x": round(float(transform_params[3]), 4),
-    #    "y": round(float(transform_params[4]), 4),
-    #    "z": round(float(transform_params[5]), 4),
-    #}
 
     transformixImageFilter = sitk.TransformixImageFilter()
     transformParameterMap["ResampleInterpolator"] = ("FinalNearestNeighborInterpolator",)
@@ -562,6 +593,23 @@ def main():
 
     volumes_per_region["fixed_image_name"] = fixed_image_name.strip() if fixed_image_name else "unknown"
     volumes_per_region["moving_image_name"] = moving_image_name.strip() if moving_image_name else "unknown"
+    volumes_per_region["FixedSeriesInstanceUID"] = ct1_SeriesInstanceUID
+    volumes_per_region["MovingSeriesInstanceUID"] = ct2_SeriesInstanceUID
+    volumes_per_region["FixedSeriesDescription"] = ct1_SeriesDescription
+    volumes_per_region["MovingSeriesDescription"] = ct2_SeriesDescription
+    volumes_per_region["FixedEvent"] = ct1_Event
+    volumes_per_region["MovingEvent"] = ct2_Event
+    volumes_per_region["FixedStudyDate"] = ct1_StudyDate
+    volumes_per_region["MovingStudyDate"] = ct2_StudyDate
+
+    if len(ct1_StudyDate) == len(ct2_StudyDate) and len(ct1_StudyDate) == 8:
+        from datetime import datetime
+        d1 = datetime.strptime(ct1_StudyDate, "%Y%m%d")
+        d2 = datetime.strptime(ct2_StudyDate, "%Y%m%d")
+        difference = d2 - d1
+        volumes_per_region["DayDifference"] = difference.days
+        print(f"Difference in days: {difference.days}")
+
 
     # save the volume info
     with open(output + "/volumes.json", "w") as file:
