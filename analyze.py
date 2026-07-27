@@ -424,7 +424,7 @@ def main():
     sitk.WriteImage(bone_mask, output + "/bone_mask_200_1000_fixed.nii.gz")
     #all_mask = create_mask_with_intensity_constraint(ct1, 200)
     sitk.WriteImage(dilateIt(bone_mask, 4), output + "/bone_mask_200_fixed.nii.gz")
-    elastixImageFilter.SetFixedMask(dilateIt(bone_mask, 8))
+    elastixImageFilter.SetFixedMask(dilateIt(bone_mask, 4))
 
     # use a region around the eyeballs as the mask
     #fixedMask = dilateIt(mask1, 7)
@@ -433,13 +433,13 @@ def main():
     #elastixImageFilter.SetFixedMask(fixedMask)
     #elastixImageFilter.SetFixedMask(bone_mask)
     
-    bone_mask2 = create_mask_with_intensity_constraint(ct2, 200, 600)
+    bone_mask2 = create_mask_with_intensity_constraint(ct2, 300, 600)
     #sitk.WriteImage(bone_mask2, output + "/bone_mask_200_moving.nii.gz")
     #elastixImageFilter.SetMovingMask(dilateIt(bone_mask2, 4))
     #movingMask = dilateIt(mask2, 4)
     # convert this mask to sitkUInt8 using Cast
     #movingMask = sitk.Cast(movingMask, sitk.sitkUInt8)
-    #elastixImageFilter.SetMovingMask(movingMask)
+    elastixImageFilter.SetMovingMask(dilateIt(bone_mask2, 4))
 
     try:
         elastixImageFilter.Execute()
