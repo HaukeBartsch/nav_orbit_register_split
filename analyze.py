@@ -6,6 +6,77 @@ import json
 import SimpleITK as sitk
 import numpy as np
 
+def _write_failure_log(output, failure_type, **kwargs):
+    """Write a markdown-formatted failure log so the caller knows why
+    volumes.json was not produced."""
+    os.makedirs(output, exist_ok=True)
+    log_path = os.path.join(output, "failure_log.md")
+
+    if failure_type == "geometry_mismatch":
+        fixed_name = kwargs["fixed_name"]
+        moving_name = kwargs["moving_name"]
+        fixed_img = kwargs["fixed_img"]
+        moving_img = kwargs["moving_img"]
+        mismatches = kwargs["mismatches"]
+        header = f"# Failure: {fixed_name} / {moving_name} geometry mismatch"
+        lines = [
+            header,
+            "",
+            "volumes.json was not written because the two images do not share "
+            "the same physical geometry. The mask-based registration would "
+            "produce a transform in a different coordinate system than the CT "
+            "registration.",
+            "",
+            "## Image metadata",
+            "",
+            "| Property | " + fixed_name + " | " + moving_name + " |",
+            "|----------|---------|---------|",
+        ]
+        lines.append(
+            f"| size | `{fixed_img.GetSize()}` | `{moving_img.GetSize()}` |"
+        )
+        lines.append(
+            f"| origin | `{fixed_img.GetOrigin()}` | `{moving_img.GetOrigin()}` |"
+        )
+        lines.append(
+            f"| spacing | `{fixed_img.GetSpacing()}` | `{moving_img.GetSpacing()}` |"
+        )
+        lines.append(
+            f"| direction | `{fixed_img.GetDirection()}` | `{moving_img.GetDirection()}` |"
+        )
+        lines.append("")
+        lines.append("## Mismatches")
+        lines.append("")
+        for m in mismatches:
+            lines.append(f"- {m}")
+        lines.append("")
+        lines.append("## Recommendation")
+        lines.append("")
+        lines.append("Resample the masks to the CT geometry before running the ")
+        lines.append("registration.")
+
+    elif failure_type == "registration_failed":
+        reason = kwargs["reason"]
+        header = "# Failure: registration did not produce a valid mask"
+        lines = [
+            header,
+            "",
+            f"volumes.json was not written. Reason: {reason}",
+            "",
+            "## Recommendation",
+            "",
+            "Check that the input masks contain valid foreground pixels and "
+            "that the registration completed successfully.",
+        ]
+    else:
+        raise ValueError(f"unknown failure_type: {failure_type}")
+
+    with open(log_path, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"FAILURE LOG written to {log_path}")
+    sys.exit(-1)
+
+
 def create_mask_with_intensity_constraint(image, min_intensity=600, max_intensity=None):
     """
     Create a binary mask based on intensity constraints.
@@ -183,8 +254,12 @@ def main():
 
 
 
-    def _compare_geometry(name_a, img_a, name_b, img_b) -> bool:
-        """Check that two images share the same physical geometry; warn if not."""
+    def _compare_geometry(name_a, img_a, name_b, img_b):
+        """Check that two images share the same physical geometry.
+
+        Returns (True, []) when they match, or (False, mismatch_details)
+        where mismatch_details is a list of human-readable strings.
+        """
         mismatches = []
         if img_a.GetSize() != img_b.GetSize():
             mismatches.append(
@@ -211,15 +286,23 @@ def main():
                 f"different coordinate system than the CT registration. "
                 f"Consider resampling the masks to the CT geometry first."
             )
-            return False
+            return False, mismatches
         else:
             print(f"OK: {name_a} and {name_b} share the same geometry.")
-        return True
+            return True, []
 
-    if not(_compare_geometry("mask1", mask1, "ct1", ct1)):
-        exit(-1)
-    if not(_compare_geometry("mask2", mask2, "ct2", ct2)):
-        exit(-1)
+    matched, mismatches = _compare_geometry("mask1", mask1, "ct1", ct1)
+    if not matched:
+        _write_failure_log(output, "geometry_mismatch",
+            fixed_name="mask1", moving_name="ct1",
+            fixed_img=mask1, moving_img=ct1,
+            mismatches=mismatches)
+    matched, mismatches = _compare_geometry("mask2", mask2, "ct2", ct2)
+    if not matched:
+        _write_failure_log(output, "geometry_mismatch",
+            fixed_name="mask2", moving_name="ct2",
+            fixed_img=mask2, moving_img=ct2,
+            mismatches=mismatches)
 
     # To make the registration better we should estimate a translation of the
     # mask2 onto mask1 first.  That transformation would overlay the eyeballs
@@ -338,10 +421,10 @@ def main():
     # operator does this only in one of the scans we end up with miss-alignment if we 
     # do not remove the streaks using our mask. Its sufficient to do this on the fixed image.
     bone_mask = create_mask_with_intensity_constraint(smooth3d(ct1, 0.5), 200, 1000)
-    sitk.WriteImage(bone_mask, output + "/bone_mask_250_600_fixed.nii.gz")
+    sitk.WriteImage(bone_mask, output + "/bone_mask_200_1000_fixed.nii.gz")
     #all_mask = create_mask_with_intensity_constraint(ct1, 200)
     sitk.WriteImage(dilateIt(bone_mask, 4), output + "/bone_mask_200_fixed.nii.gz")
-    elastixImageFilter.SetFixedMask(dilateIt(bone_mask, 4))
+    elastixImageFilter.SetFixedMask(dilateIt(bone_mask, 8))
 
     # use a region around the eyeballs as the mask
     #fixedMask = dilateIt(mask1, 7)
@@ -358,7 +441,12 @@ def main():
     #movingMask = sitk.Cast(movingMask, sitk.sitkUInt8)
     #elastixImageFilter.SetMovingMask(movingMask)
 
-    elastixImageFilter.Execute()
+    try:
+        elastixImageFilter.Execute()
+    except RuntimeError as e:
+        _write_failure_log(output, "registration_failed",
+            reason=f"elastix registration raised RuntimeError: {e} — "
+                   "volumes.json was not written.")
 
     # Get the mutual information metric value from the log file
     final_metric = None
@@ -389,7 +477,7 @@ def main():
         A =  np.eye(3) # transformParameterMap.GetMatrix()
 
     affine_scale = { "x": 1, "y": 1, "z": 1 }
-    if transformParameterMap["Transform"][0] == "AffineTransform":        
+    if transformParameterMap["Transform"][0] == "AffineTransform":
         # The physical scale per axis is the L2 norm of each column/row (depending on ITK convention)
         affine_scale = {
             "x": round(float(A[0][0]), 4),
@@ -422,13 +510,14 @@ def main():
     # get center of mass for the mask
 
     mask_array = sitk.GetArrayFromImage(mask2_registered)
-        
+
     # Calculate center of mass
     coords = np.where(mask_array > 0)
-        
+
     if len(coords[0]) == 0:
-        print("Error: No mask pixel found in the resampled mask, registration error!")
-        exit(-1)
+        _write_failure_log(output, "registration_failed",
+            reason="no mask pixels found in the resampled mask — "
+                   "registration failed, volumes.json was not written.")
             
     # Calculate center of mass for each dimension
     center_x = np.mean(coords[1])  # x coordinate (column index)
@@ -448,6 +537,13 @@ def main():
     x_coords = coords[0]
     y_coords = coords[1]
     z_coords = coords[2]
+
+    #
+    # Idea for improvement: the last slice in the anterior direction could differ between the 
+    # two scans, between before (fixed) and after (moving) operation. This would introduce a bias
+    # in the size measurements that can be prevented if we use the smaller of the two and remove
+    # the other once slices from the mask.
+    #
 
     #
     # Split eyeballs
@@ -529,10 +625,10 @@ def main():
         # GetPhysicalSize returns the volume in the image's physical units
         volume_mm3 = shape_stats.GetPhysicalSize(label)
         nam = names_dict[label]
-        volumes_per_region["fixed"][nam] = volume_mm3 / 1000
-        print(f"{nam}: Volume = {volumes_per_region["fixed"][nam]:.2f} cm³")
+        volumes_per_region["moved"][nam] = volume_mm3 / 1000
+        print(f"{nam}: Volume = {volumes_per_region["moved"][nam]:.2f} cm³")
 
-    sitk.WriteImage(split_mask, output + "/split_mask_fixed_resampled.nii.gz")
+    sitk.WriteImage(split_mask, output + "/split_mask_moved_resampled.nii.gz")
 
     # Apply the same splits with the mask1 and save that also
     mask_array = sitk.GetArrayFromImage(mask1)
@@ -577,10 +673,10 @@ def main():
         # GetPhysicalSize returns the volume in the image's physical units
         volume_mm3 = shape_stats.GetPhysicalSize(label)
         nam = names_dict[label]
-        volumes_per_region["moved"][nam] = volume_mm3 / 1000
-        print(f"{nam}: Volume = {volumes_per_region["moved"][nam]:.2f} cm³")
+        volumes_per_region["fixed"][nam] = volume_mm3 / 1000
+        print(f"{nam}: Volume = {volumes_per_region["fixed"][nam]:.2f} cm³")
 
-    sitk.WriteImage(split_mask, output + "/split_mask_moved_resampled.nii.gz")
+    sitk.WriteImage(split_mask, output + "/split_mask_fixed_resampled.nii.gz")
 
     # add volume change ratios
     for region in names_dict[1:]:  # skip "background"
@@ -595,10 +691,10 @@ def main():
     volumes_per_region["moving_image_name"] = moving_image_name.strip() if moving_image_name else "unknown"
     volumes_per_region["FixedSeriesInstanceUID"] = ct1_SeriesInstanceUID
     volumes_per_region["MovingSeriesInstanceUID"] = ct2_SeriesInstanceUID
-    volumes_per_region["FixedSeriesDescription"] = ct1_SeriesDescription
-    volumes_per_region["MovingSeriesDescription"] = ct2_SeriesDescription
-    volumes_per_region["FixedEvent"] = ct1_Event
-    volumes_per_region["MovingEvent"] = ct2_Event
+    volumes_per_region["FixedSeriesDescription"] = ct1_SeriesDescription.strip()
+    volumes_per_region["MovingSeriesDescription"] = ct2_SeriesDescription.strip()
+    volumes_per_region["FixedEvent"] = ct1_Event.strip()
+    volumes_per_region["MovingEvent"] = ct2_Event.strip()
     volumes_per_region["FixedStudyDate"] = ct1_StudyDate
     volumes_per_region["MovingStudyDate"] = ct2_StudyDate
 
