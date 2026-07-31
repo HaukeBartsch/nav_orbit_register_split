@@ -4,6 +4,8 @@ Task: Load a set of 2 CT images with their corresponding masks. Split the masks 
 
 ![Resulting fused and split images and masks](https://github.com/HaukeBartsch/nav_orbit_register_split/raw/main/screenshot.png)
 
+Fig.: The above figure shows a visualization after data processing of a fused pre- and post-operative CT and masks after volume splitting. Regardless of soft-tissue changes visible between the two timepoints (6 years appart) bone-based registration is good. Medial region masks (green, yellow) in both eyes show an increase of volume (post-op). No apparent change in lateral masks. This is confirmed in the volume change ratios reported (medial (l/r): 1.72/1.76, lateral (l/r): 1.03/1.01).
+
 All CT volumes are exported from research PACS (DICOM format). Masks for pre- and post-operative CT are expert drawn in PACS using a 2d area (polygon) tool. [pr2mask](https://github.com/mmiv-center/pr2mask) is used to convert polygon masks to binary masks in PACS (DICOM). Binary masks are exported from PACS into separate folders and used below for automated image registration and mask splitting into left eye / right eye and lateral / medial regions (3d).
 
 Using SimpleITK and SimpleITK-SimpleElastix. All processing in this project uses pseudonymized DICOM files. The arguments of analyze.py point to the parent folder that contains them. In the following call nifti files are loaded instead (mostly untested).
@@ -147,7 +149,11 @@ flowchart TD
     VJ --> CSV
 ```
 
-The bone-masked based, rigid registration tolerates soft-tissue changes like weight-gain between pre- and post-operative CTs.
+The bone-masked based, rigid registration tolerates soft-tissue changes like weight-gain between pre- and post-operative CT time points.
+
+I opted to move the post-operative CT towards the pre-operative CT. In some cases the pre-operative CT is of lower quality in our patient cohort which might introduce additional sources of failures to process.
+
+Further sources of errors are streaking artifacts caused by metal implants in teeth. In some cases the operator has not sufficiently restricted the field of view to remove such artifacts either pre- or post-operative.
 
 ## Generated Files
 
