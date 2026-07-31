@@ -599,7 +599,6 @@ def main():
     volumes_per_region = {
         "final_mutual_information": -final_metric,
         "full_masks_dice": full_masks_dice,
-        "affine_scale": affine_scale,
         "volume_change_ratio": {},
         "moved": {},
         "fixed": {}

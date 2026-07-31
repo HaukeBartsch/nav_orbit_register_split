@@ -27,11 +27,6 @@ As output the following information is generated (/tmp/volumes.json).
 {
   "final_mutual_information": 1.24027,
   "full_masks_dice": 0.9029907246512155,
-  "affine_scale": {
-    "x": 1,
-    "y": 1,
-    "z": 1
-  },
   "volume_change_ratio": {
     "Left eye / medial": 1.718,
     "Right eye / medial": 1.7642,
