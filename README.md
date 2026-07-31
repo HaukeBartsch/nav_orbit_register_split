@@ -62,7 +62,7 @@ As output the following information is generated (/tmp/volumes.json).
 
 ## Three-stage data processing pipeline
 
-- **Intensity-based rigid registration** — bone mask extracted from pre-op CT (≥200 HU), dilated 7 voxels, used to initialize and constrain Elastix rigid transform (6 DOF: 3 translation + 3 rotation) registering post-op CT to pre-op CT space, transformation was initialized using a rigid post-op mask to pre-op mask registration
+- **Intensity-based rigid registration** — bone mask extracted from pre-op CT (≥200 HU), dilated 4 voxels, used to constrain Elastix rigid transform (6 DOF: 3 translation + 3 rotation) registering post-op CT to pre-op CT space, transformation is initialized using a prior rigid post-op mask to pre-op mask registration
 - **Mask transformation** — post-op mask re-sampled via nearest-neighbor interpolation using the computed transform
 - **Eye splitting & volume analysis** — hierarchical split (medial/lateral, then anterior/posterior) into 4 labeled regions, volumes computed in cm³
 
@@ -144,6 +144,8 @@ flowchart TD
     QC --> VJ
     VJ --> CSV
 ```
+
+The bone-masked based, rigid registration tolerates soft-tissue changes like weight-gain between pre- and post-operative CTs.
 
 ## Generated Files
 
