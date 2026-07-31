@@ -4,7 +4,7 @@ Task: Load a set of 2 CT images with their corresponding masks. Split the masks 
 
 ![Resulting fused and split images and masks](https://github.com/HaukeBartsch/nav_orbit_register_split/raw/main/screenshot.png)
 
-All CT volumes are exported from research PACS (DICOM). Masks for pre- and post-operative CT are first expert drawn in PACS using a 2d area (polygon) tool. [pr2mask](https://github.com/mmiv-center/pr2mask) is used to convert polygon masks to binary masks in PACS (DICOM). Binary masks for finally exported from PACS into separate folders and used below for automated image registration and mask splitting into left eye / right eye and lateral / medial regions (3d).
+All CT volumes are exported from research PACS (DICOM format). Masks for pre- and post-operative CT are expert drawn in PACS using a 2d area (polygon) tool. [pr2mask](https://github.com/mmiv-center/pr2mask) is used to convert polygon masks to binary masks in PACS (DICOM). Binary masks are exported from PACS into separate folders and used below for automated image registration and mask splitting into left eye / right eye and lateral / medial regions (3d).
 
 Using SimpleITK and SimpleITK-SimpleElastix. All processing in this project uses pseudonymized DICOM files. The arguments of analyze.py point to the parent folder that contains them. In the following call nifti files are loaded instead (mostly untested).
 
