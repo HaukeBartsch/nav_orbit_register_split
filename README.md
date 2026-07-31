@@ -2,7 +2,7 @@
 
 Task: Load a set of 2 CT images with their corresponding masks. Split the masks after registration and export some statistics.
 
-Using pandas, SimpleITK and SimpleITK-SimpleElastix.
+Using SimpleITK and SimpleITK-SimpleElastix.
 
 ```bash
 conda activate nav_orbit_register_split
