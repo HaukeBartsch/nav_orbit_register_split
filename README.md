@@ -1,6 +1,6 @@
-# Load / register / split / export
+# CT orbit registration
 
-Task: Load a set of 2 CT images with their corresponding masks. Split the masks after registration and export some statistics.
+Task: Register a post-operative CT to a pre-operative CT with their corresponding masks. Split the masks after registration and analyze left eye / right eye and lateral and medial changes.
 
 ![Resulting fused and split images and masks](https://github.com/HaukeBartsch/nav_orbit_register_split/raw/main/screenshot.png)
 
