@@ -170,6 +170,7 @@ The bone-masked based, rigid registration tolerates soft-tissue changes like wei
 - Processing might have failed at an initial stage, check for a log file that indicates the reason for the failure, check the raw data using a tool like 3D Slicer or ITK Snap.
 - Check that the total volume (sum of all four regions) is in a plausible range for orbital volumes (typically 25–45 cm³ total per eye in adults).
 - **Failure indicators:**
+  - A failure_log.md file is generated, no split masks available.
   - All volumes are 0 — the mask was empty or the splitting logic failed.
   - One region has an implausibly large volume (e.g., > 50 cm³) — the split may have assigned too many voxels to one region.
   - The `fixed` and `moved` volumes are identical — the registration transform may be the identity (no transformation applied).
