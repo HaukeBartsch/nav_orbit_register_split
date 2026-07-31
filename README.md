@@ -2,7 +2,9 @@
 
 Task: Load a set of 2 CT images with their corresponding masks. Split the masks after registration and export some statistics.
 
-Using SimpleITK and SimpleITK-SimpleElastix.
+![Resulting fused and split images and masks](https://github.com/HaukeBartsch/nav_orbit_register_split/raw/main/screenshot.png)
+
+Using SimpleITK and SimpleITK-SimpleElastix. All processing in this project uses pseudonymized DICOM files. The arguments of analyze.py point to the parent folder that contains them. In the following call nifti files are loaded instead (mostly untested).
 
 ```bash
 conda activate nav_orbit_register_split
