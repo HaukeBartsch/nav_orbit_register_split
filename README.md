@@ -72,7 +72,7 @@ flowchart TD
         BM2["Bone mask (moving/post-op)\nthreshold 300–600 HU"]
         BM2D["Bone mask dilated ×4"]
         R2["Rigid registration: ct2 → ct1\nAdvancedMattesMutualInformation\n6 DOF, 7 resolutions\n2000 samples, ASGD"]
-        TX2["Full transform (mask + affine\ncomposed via HowToCombineTransforms")]
+        TX2["Full transform: mask + affine combined via HowToCombineTransforms"]
         CR2["Registered CT\nct_moved_resampled.nii.gz"]
     end
 
