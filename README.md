@@ -19,26 +19,42 @@ As output the following information is generated (/tmp/volumes.json).
 
 ```json
 {
-  "final_mutual_information": 0.671422,
-  "full_masks_dice": 0.8309363178873083,
+  "final_mutual_information": 1.24027,
+  "full_masks_dice": 0.9029907246512155,
+  "affine_scale": {
+    "x": 1,
+    "y": 1,
+    "z": 1
+  },
   "volume_change_ratio": {
-    "Left eye / medial": 0.3948,
-    "Right eye / medial": 0.9031,
-    "Left eye / lateral": 0.7542,
-    "Right eye / lateral": 0.8061
+    "Left eye / medial": 1.718,
+    "Right eye / medial": 1.7642,
+    "Left eye / lateral": 1.0277,
+    "Right eye / lateral": 1.0083
   },
   "moved": {
-    "Left eye / medial": 7.89731547915303,
-    "Right eye / medial": 4.151688998790885,
-    "Left eye / lateral": 17.828592184085956,
-    "Right eye / lateral": 17.480299698230382
+    "Left eye / medial": 6.094768261645225,
+    "Right eye / medial": 5.3841309189096425,
+    "Left eye / lateral": 21.377972060092763,
+    "Right eye / lateral": 20.881426106104357
   },
   "fixed": {
-    "Left eye / medial": 8.385168201593249,
-    "Right eye / medial": 7.072876303773375,
-    "Left eye / lateral": 20.90119778497074,
-    "Right eye / lateral": 20.97036979765703
-  }
+    "Left eye / medial": 3.547581782437404,
+    "Right eye / medial": 3.0518850604551395,
+    "Left eye / lateral": 20.8024475295336,
+    "Right eye / lateral": 20.708862162457287
+  },
+  "fixed_image_name": "NAV-ORBIT_0XX",
+  "moving_image_name": "NAV-ORBIT_0XX",
+  "FixedSeriesInstanceUID": "1.2.752.2771",
+  "MovingSeriesInstanceUID": "1.2.752.3771",
+  "FixedSeriesDescription": "2",
+  "MovingSeriesDescription": "1",
+  "FixedEvent": "EventName:1",
+  "MovingEvent": "EventName:2",
+  "FixedStudyDate": "20180000",
+  "MovingStudyDate": "20250000",
+  "DayDifference": 2352
 }
 ```
 
