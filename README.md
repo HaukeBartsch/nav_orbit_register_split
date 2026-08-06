@@ -63,7 +63,7 @@ As output the following information is generated (/tmp/volumes.json).
 
 - **Intensity-based rigid registration** — bone mask extracted from pre-op CT (≥200 HU), dilated 4 voxels, used to constrain Elastix rigid transform (6 DOF: 3 translation + 3 rotation) registering post-op CT to pre-op CT space, transformation is initialized using a prior rigid post-op mask to pre-op mask registration
 - **Mask transformation** — post-op mask re-sampled via nearest-neighbor interpolation using the computed transform
-- **By eye mask splitting & volume analysis** — hierarchical split (left eye / right eye, then medial / lateral) into 4 labeled regions, volumes computed in cm³
+- **By eye mask splitting & volume analysis** — hierarchical split into 4 labeled regions. Stage 1: left eye / right eye based on position on mid lateral image, stage 2: split each eye into medial / lateral region based on estimated optic nerve location leaving the orbit mask. Volumes are computed in cm³.
 
 ```mermaid
 flowchart TD
